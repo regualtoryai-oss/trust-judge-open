@@ -101,7 +101,7 @@ async def test_context_four_http_mock_worker_publishes_exports_and_independently
     snapshot = repo.snapshot(topic, run["target_revision_id"])
     result = snapshot["question_results"][question["id"]]
     assert result["source_bundle_protocol"] == SOURCE_CONTEXT_PROTOCOL
-    assert result["evidence_relation_scope"]["format"] == "issue-frame-evidence-relations-v2"
+    assert result["evidence_relation_scope"]["format"] == "conclusion-aligned-evidence-relations-v3"
     documents, paragraphs = repo.source_documents(topic), repo.paragraphs(topic)
     parents = {p["id"]: p for p in paragraphs}
     assert result["evidence"]

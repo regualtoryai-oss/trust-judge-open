@@ -187,7 +187,7 @@ async def test_ids_only_worker_keeps_three_analysts_and_publishes_literal_fields
         mode = _selection_mode(completed["source_bundle_proof"]["response"]["proof"], settings.source_bundle_config, run)
         assert mode["front_use_type_is_final_conflict"] is False
         if issue_frame:
-            assert completed["evidence_relation_scope"]["format"] == "issue-frame-evidence-relations-v2"
+            assert completed["evidence_relation_scope"]["format"] == "conclusion-aligned-evidence-relations-v3"
             assert "issue_frame" not in json.loads(requests[-1]["messages"][-1]["content"]).get("analyses", [{}])[0]
             assert "issue_frame" in requests[-1]["tools"][0]["function"]["parameters"]["properties"]
 

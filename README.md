@@ -10,6 +10,11 @@ and engineering tests. It does not include private development history,
 competition source materials, reference answers, provider credentials or
 historical model-response archives.
 
+![离线合成演练工作台：固定脚本输出，未调用模型](docs/assets/workbench-offline.png)
+
+*界面截图来自公开版自带合成资料与固定测试输出，展示真实导入、任务、图谱和
+导出链路；未调用模型，不代表真实模型效果、准确率或线上生产表现。*
+
 ## 项目解决的问题
 
 把“模型给出一段回答”拆为可以检查的工程流程：资料导入、证据抽取、逐字

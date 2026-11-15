@@ -42,6 +42,10 @@ counter. Those cases verify budget plumbing and accounting states, not real
 tokenization, provider capacity or billing. Production tokenizer guards are
 unchanged and fail closed when the required asset is unavailable.
 
+The archived-code replay test for a fixed private historical Git commit skips
+when that commit is absent. The clean public repository deliberately contains
+no original private Git objects; current-source replay regressions still run.
+
 ## Verification interpretation
 
 Local tests use synthetic providers and source fixtures. GitHub Actions is

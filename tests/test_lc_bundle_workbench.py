@@ -55,6 +55,10 @@ def test_missing_archived_dependency_fails_instead_of_importing_live_workspace(t
 
 
 def _frozen_app_bytes(revision):
+    available = subprocess.run(["git", "cat-file", "-e", revision + "^{commit}"],
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if available.returncode:
+        pytest.skip("private historical Git snapshot is intentionally absent from the clean public history")
     archived = subprocess.run(["git", "archive", "--format=tar", revision, "app", lc._ENTRY],
         cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True).stdout
     with tarfile.open(fileobj=BytesIO(archived)) as archive:

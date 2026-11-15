@@ -117,9 +117,15 @@ def patch_http(monkeypatch, adapter, *, mode="valid", started=None):
             if name == "ScopedArbitrationWireOutput":
                 result.pop("supporting_evidence_ids"); result.pop("conflicting_evidence_ids")
                 if "issue_frame" in body["tools"][0]["function"]["parameters"].get("properties", {}):
-                    result.update(issue_frame={"question_anchor": payload["question"]["question"],
-                        "proposition": "所给原文尚未显示项目已经批准。", "claim_kind": "official_finding",
-                        "scope": "仅限当前已给原文的程序状态。"}, relations={ref: "QS" for ref in ids}, conflicts=[])
+                    if '"alternatives_relation"' in json.dumps(body["tools"][0]["function"]["parameters"]):
+                        result.update(issue_frame={"question_anchor": payload["question"]["question"],
+                            "claim_kind": "official_finding", "scope": "仅限当前已给原文的程序状态。",
+                            "alternatives": {"X": "", "Y": ""}, "alternatives_relation": "not_binary"},
+                            relations={ref: {"assessment": "QS_procedure", "side": "neither"} for ref in ids}, conflicts=[])
+                    else:
+                        result.update(issue_frame={"question_anchor": payload["question"]["question"],
+                            "proposition": "所给原文尚未显示项目已经批准。", "claim_kind": "official_finding",
+                            "scope": "仅限当前已给原文的程序状态。"}, relations={ref: "QS" for ref in ids}, conflicts=[])
                 else:
                     result.update(principal_claim="现有公开材料只能确认程序记录，不能据此认定项目已经批准。",
                         relations={ref: "qualification" for ref in ids}, conflicts=[])
