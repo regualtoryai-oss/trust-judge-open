@@ -11,6 +11,13 @@ baseline result is currently claimed.
 
 ### 1. Engineering verification (no model)
 
+Run `uv run python scripts/prepare_tokenizer_cache.py` once during dependency
+preparation. It may fetch the public `cl100k_base` table and verifies its pinned
+SHA-256; it makes no model call. Set `TIKTOKEN_CACHE_DIR` when a dedicated cache
+is desired. All following pytest processes continue to reject external network
+attempts; real encoding counts are not replaced by synthetic counters in the
+token-proxy invariance tests.
+
 ```sh
 uv run python scripts/demo_offline.py
 uv run pytest -q tests/test_import_scenarios.py tests/test_data.py tests/test_domain.py

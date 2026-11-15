@@ -130,6 +130,11 @@ TRUST_MODEL_BASE_URL=https://api.openai.com/v1
 
 ## 验证
 
+首次安装后先运行 `uv run python scripts/prepare_tokenizer_cache.py`，准备唯一需要的
+公开 `cl100k_base` 编码表并校验 SHA-256。这是安装准备阶段的公开资源请求，
+不是模型调用；随后测试仍禁止外网。可用 `TIKTOKEN_CACHE_DIR` 指定缓存位置，
+CI 将它设在 runner 的临时目录；编码数据不提交到 Git。
+
 ```sh
 uv run pytest -q
 cd web
