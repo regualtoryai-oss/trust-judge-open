@@ -20,7 +20,6 @@ jobs:
     env:
       TRUST_MODEL_API_KEY: ""
       TRUST_MODEL_NAME: ""
-      TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,10 +35,14 @@ jobs:
       - name: Verify synthetic import integrity
         run: uv run python scripts/demo_offline.py
       - name: Prepare hash-verified public encoding data before offline tests
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
         run: uv run python scripts/prepare_tokenizer_cache.py
       - name: Verify offline toy scoring
         run: uv run python scripts/evaluate_paragraphs.py --bundle evaluation-fixtures/toy-bundle.json --output .runtime/ci-toy-score
       - name: Run engineering regressions with external model traffic blocked
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
         run: uv run pytest -q --maxfail=1 -m 'not archival'
 
   backend-archival:
@@ -49,7 +52,6 @@ jobs:
     env:
       TRUST_MODEL_API_KEY: ""
       TRUST_MODEL_NAME: ""
-      TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -63,8 +65,12 @@ jobs:
           python -m pip install uv
           uv sync --locked
       - name: Prepare hash-verified public encoding data before offline tests
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
         run: uv run python scripts/prepare_tokenizer_cache.py
       - name: Verify isolated archived-source replay and dependency integrity
+        env:
+          TIKTOKEN_CACHE_DIR: ${{ runner.temp }}/trust-judge-tiktoken
         run: uv run pytest -q --maxfail=1 -m archival
 
   frontend:
