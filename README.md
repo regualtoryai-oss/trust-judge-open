@@ -146,6 +146,9 @@ Python 测试默认阻止外部网络，模型回复由测试显式注入。自�
 默认后端套件按 `optional_dsh_runtime` 标记显式跳过需要未分发 tokenizer/SDK
 资产的原生集成测试（实际数量见测试汇总）；
 准备对应固定资产后可使用 `--run-dsh-integration` 单独启用。它们不计为已通过。
+CI 将可分发的同一套用例互斥分为 `not archival` 主业务检查与 `archival`
+冻结源码独立回放检查，两个后端 job 都执行并需要通过。默认 `uv run pytest -q`
+仍包含两组，不因分层减少验证范围。
 
 架构与取舍见 [`docs/architecture.md`](docs/architecture.md)，评测口径和
 可重跑命令见 [`docs/evaluation.md`](docs/evaluation.md)，公开范围见

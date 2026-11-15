@@ -46,6 +46,28 @@ The archived-code replay test for a fixed private historical Git commit skips
 when that commit is absent. The clean public repository deliberately contains
 no original private Git objects; current-source replay regressions still run.
 
+## CI partition
+
+`archival` marks exactly two modules: `tests/test_bundle_archived_replay.py`
+and `tests/test_lc_bundle_workbench.py`. They deliberately run isolated frozen
+source/dependency replay processes, including missing-dependency and cleanup
+checks. CI runs these in an **Archived proof integrity** job; all other backend
+cases run in **Core engineering**. Both jobs run on every push/PR and must pass.
+
+```sh
+uv run pytest -q --maxfail=1 -m 'not archival'
+uv run pytest -q --maxfail=1 -m archival
+```
+
+These are disjoint selections whose union is the default collected test set.
+Unqualified `uv run pytest -q` continues to execute both groups. External-asset
+optional skips and the absent-private-history skip retain their explicit
+reasons; CI partitioning does not turn those into successful integrations.
+
+The 2026-11-14 collection-only audit found **3,749** default cases: **3,704**
+core and **45** archival, with an empty intersection and no missing/extra case.
+These are collection counts, not a claim that all tests have passed.
+
 ## Verification interpretation
 
 Local tests use synthetic providers and source fixtures. GitHub Actions is

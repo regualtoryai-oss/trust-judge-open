@@ -6,6 +6,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.archival
+
 import app.domain.source_bundle_tools as live_tools
 import app.workflows.bundle_workbench as workbench
 import scripts.source_bundle_tool as live_entry

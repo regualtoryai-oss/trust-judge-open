@@ -9,6 +9,8 @@ import tarfile
 
 import pytest
 
+pytestmark = pytest.mark.archival
+
 from app.workflows import lc_bundle_workbench as lc
 from app.workflows.bundle_workbench import _json
 from test_bundle_workbench import descriptor

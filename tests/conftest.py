@@ -20,6 +20,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "optional_dsh_runtime: needs separately provisioned pinned DSH/tokenizer runtime assets")
+    config.addinivalue_line("markers", "archival: isolated frozen-source replay and archived dependency integrity checks")
 
 
 def pytest_collection_modifyitems(config, items):
