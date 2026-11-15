@@ -223,10 +223,10 @@ def audit_cached_requests(rows, parent_manifests, guards, *, syntax_decoder_sha2
     if allow_bundle_partial_analyses and not allow_bundle_tail:
         raise ValueError("partial_cached_analyses_require_explicit_bundle_tail")
     wires, responses, operations, projections, bindings = [], [], [], [], []
+    allowed = (["authority_analyst", "cross_validation_analyst", "arbitrate"] if allow_bundle_tail else
+        ["strict_selection", "strict_annotation", "authority_analyst", "cross_validation_analyst"])
     for row in rows:
         operation = row.get("operation")
-        allowed = (["authority_analyst", "cross_validation_analyst", "arbitrate"] if allow_bundle_tail else
-            ["strict_selection", "strict_annotation", "authority_analyst", "cross_validation_analyst"])
         if operation not in allowed or operation in operations:
             raise ValueError("cache_reuse_limited_to_unique_pre_arbitration_stages")
         hit = descriptor(row["cache_hit"], guards)
