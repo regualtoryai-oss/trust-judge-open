@@ -102,4 +102,5 @@ def test_cost_controls_preserve_defaults_and_validate_explicit_profile_limits():
     with pytest.raises(ValueError): Settings(_env_file=None, strict_evidence_cost_parent_run_ids=[""])
     with pytest.raises(ValueError): Settings(_env_file=None, strict_evidence_max_requests=7)
     assert Settings(_env_file=None, strict_evidence_token_stop=75000).strict_evidence_token_stop == 75000
-    with pytest.raises(ValueError): Settings(_env_file=None, strict_evidence_token_stop=80001)
+    assert Settings(_env_file=None, strict_evidence_token_stop=120000).strict_evidence_token_stop == 120000
+    with pytest.raises(ValueError): Settings(_env_file=None, strict_evidence_token_stop=120001)
