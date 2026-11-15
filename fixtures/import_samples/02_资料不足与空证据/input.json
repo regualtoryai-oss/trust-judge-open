@@ -1,0 +1,50 @@
+{
+  "title": "【合成演练】岚河停运原因待查",
+  "documents": [
+    {
+      "doc_id": "doc_001",
+      "title": "岚河站停运服务公告",
+      "content": "【合成演练】岚河站已暂停旅客服务，恢复时间另行通知。\n\n公告未提供停运原因，原因仍在调查。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 26,
+          "text": "【合成演练】岚河站已暂停旅客服务，恢复时间另行通知。"
+        },
+        {
+          "para_id": "para_002",
+          "char_start": 28,
+          "char_end": 45,
+          "text": "公告未提供停运原因，原因仍在调查。"
+        }
+      ],
+      "publish_time": null,
+      "content_url": null
+    },
+    {
+      "doc_id": "doc_002",
+      "title": "接驳信息",
+      "content": "【合成演练】接驳车在东广场候车。现场仅提供出行安排，没有事故鉴定或责任认定记录。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 40,
+          "text": "【合成演练】接驳车在东广场候车。现场仅提供出行安排，没有事故鉴定或责任认定记录。"
+        }
+      ],
+      "publish_time": null
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "q_001",
+      "question": "现有资料能否确定岚河站停运的直接原因及责任主体？"
+    },
+    {
+      "question_id": "q_002",
+      "question": "资料是否给出岚河站恢复服务的确切日期？"
+    }
+  ]
+}

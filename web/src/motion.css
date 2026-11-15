@@ -1,0 +1,432 @@
+/* Motion is attached to recorded state changes. No animation represents
+   estimated progress, historical graph states, or an unrecorded tool call. */
+:root {
+  --motion-fast: 140ms;
+  --motion-medium: 260ms;
+  --motion-slow: 480ms;
+  --motion-ease: cubic-bezier(.2, .7, .2, 1);
+  --motion-spring: cubic-bezier(.2, .8, .25, 1.16);
+}
+
+/* A single, restrained first-load entrance establishes the reading order. */
+.shell-enter .app-header {
+  animation: motion-header-in var(--motion-slow) var(--motion-ease) both;
+}
+.shell-enter .sidebar {
+  animation: motion-shell-in var(--motion-slow) var(--motion-ease) 70ms both;
+}
+.shell-enter .workspace-heading {
+  animation: motion-shell-in var(--motion-slow) var(--motion-ease) 110ms both;
+}
+.shell-enter .mission-control {
+  animation: motion-shell-in var(--motion-slow) var(--motion-ease) 150ms both;
+}
+.shell-enter .results-shell,
+.shell-enter .empty-library {
+  animation: motion-shell-in 560ms var(--motion-ease) 190ms both;
+}
+.shell-enter .activity-sidebar {
+  animation: motion-shell-in 560ms var(--motion-ease) 230ms both;
+}
+
+.button,
+.icon-button,
+.header-refresh,
+.text-button,
+.graph-view-button,
+.motion-toggle {
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
+}
+.button:active:not(:disabled),
+.icon-button:active:not(:disabled),
+.graph-view-button:active:not(:disabled) {
+  transform: translateY(1px) scale(.98);
+}
+.button.primary:not(:disabled):hover {
+  background-image: linear-gradient(115deg, #a1f4e5aa, transparent 70%);
+}
+.icon-button:hover:not(:disabled) {
+  border-color: #5da5ad;
+  color: #b1e7df;
+  transform: translateY(-1px);
+}
+.question-list > button {
+  transition:
+    background var(--motion-medium) ease,
+    border-color var(--motion-medium) ease,
+    color var(--motion-medium) ease;
+}
+.question-list > button .question-index {
+  transition: color var(--motion-medium) ease;
+}
+.question-list > button.selected .question-index {
+  color: #9de8d8;
+}
+.tab-list > button {
+  position: relative;
+  transition: color var(--motion-medium) ease, border-color var(--motion-medium) ease;
+}
+.tab-list > button::after {
+  position: absolute;
+  content: "";
+  height: 2px;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  background: var(--cyan);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--motion-medium) var(--motion-ease);
+}
+.tab-list > button.active::after {
+  transform: scaleX(1);
+}
+
+/* The completed fraction comes from persisted stage counts. The travelling
+   light means "executing", rather than a second, fabricated progress value. */
+.mission-progress-track {
+  position: relative;
+  height: 3px;
+  background: #0a1a22;
+  overflow: hidden;
+  isolation: isolate;
+}
+.mission-progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #308b87, #74e7cf);
+  transform-origin: left;
+  transition: transform var(--motion-slow) var(--motion-ease);
+}
+.mission-active .mission-progress-track::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, #b9fff1a0, transparent);
+  animation: motion-stage-scan 3.2s linear infinite;
+  pointer-events: none;
+}
+.live-orb.running,
+.live-orb.queued,
+.tool-call.running .tool-status {
+  animation: none;
+}
+.mission-active .live-orb.running,
+.mission-active .live-orb.queued {
+  animation: motion-breathe 2.6s ease-in-out infinite;
+}
+.pipeline-icon,
+.pipeline-step strong,
+.pipeline-connector,
+.analyst-avatar,
+.lane-status {
+  transition:
+    border-color var(--motion-medium) ease,
+    background-color var(--motion-medium) ease,
+    color var(--motion-medium) ease,
+    opacity var(--motion-medium) ease;
+}
+.mission-active .pipeline-step.active .pipeline-icon {
+  position: relative;
+}
+.mission-active .pipeline-step.active .pipeline-icon::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid #68ddcb70;
+  border-radius: 10px;
+  animation: motion-active-ring 2.6s ease-out infinite;
+  pointer-events: none;
+}
+.pipeline-step.done .pipeline-connector {
+  background: #498c82;
+}
+.pipeline-mark-content,
+.tool-status > span {
+  display: inline-block;
+}
+.analyst-avatar {
+  position: relative;
+}
+.analyst-signal {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+}
+.mission-active .analyst-lane.active .analyst-signal {
+  animation: motion-active-ring 2.8s ease-out infinite;
+}
+.mission-active .analyst-lane.active:nth-child(2) .analyst-signal {
+  animation-delay: 1s;
+}
+.analyst-lane.paused .analyst-avatar {
+  border-color: #7a6b4f;
+  color: #d7bc8e;
+}
+
+/* Graph wrappers belong to Vue Flow. Only the inner card is transformed. */
+.judgment-node {
+  transition:
+    transform var(--motion-medium) var(--motion-ease),
+    border-color var(--motion-medium) ease,
+    box-shadow var(--motion-medium) ease,
+    opacity var(--motion-medium) ease;
+}
+.judgment-node:hover {
+  transform: translateY(-2px);
+  border-color: #6b9ead;
+}
+.judgment-node.node-conclusion:hover {
+  border-color: #79ddc9;
+}
+.vue-flow__node.selected .judgment-node,
+.vue-flow__node.is-focused .judgment-node {
+  border-color: #99f1de;
+  box-shadow: 0 0 0 2px #69d5c5, 0 6px 24px #4fd4ba25;
+}
+.vue-flow__node.node-arrive .judgment-node,
+.judgment-node.node-arrive {
+  animation: motion-node-in var(--motion-slow) var(--motion-ease)
+    var(--node-enter-delay, 0ms) backwards;
+}
+.vue-flow__edge .vue-flow__edge-path {
+  transition: stroke var(--motion-medium) ease, opacity var(--motion-medium) ease;
+}
+.vue-flow__edge.animated path {
+  animation: none;
+}
+.vue-flow__edge.edge-muted .vue-flow__edge-path {
+  opacity: .2;
+}
+.vue-flow__edge.edge-focus .vue-flow__edge-path {
+  opacity: 1;
+  stroke-width: 2px;
+}
+.graph-canvas.is-executing .vue-flow__edge.edge-live .vue-flow__edge-path,
+.graph-canvas.is-executing .vue-flow__edge.edge-focus .vue-flow__edge-path,
+.graph-canvas.is-tracing:not(.is-paused) .vue-flow__edge.edge-focus .vue-flow__edge-path {
+  stroke-dasharray: 5 7;
+  animation: motion-evidence-trace 2.4s linear infinite;
+}
+.constellation-ring {
+  animation: none;
+}
+.graph-canvas.is-executing .constellation-ring {
+  animation: motion-breathe 3.2s ease-in-out infinite;
+}
+
+/* Vue transitions: side-panel, tab content, stage title, actual new records. */
+.panel-reveal-enter-active,
+.panel-reveal-leave-active {
+  transition: transform var(--motion-medium) var(--motion-ease), opacity var(--motion-medium) ease;
+}
+.panel-reveal-enter-from,
+.panel-reveal-leave-to {
+  opacity: 0;
+  transform: translateX(22px);
+}
+.artifact-switch-enter-active {
+  transition: transform var(--motion-medium) var(--motion-ease), opacity var(--motion-medium) ease;
+}
+.artifact-switch-leave-active {
+  transition: opacity var(--motion-fast) ease;
+}
+.artifact-switch-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.artifact-switch-leave-to {
+  opacity: 0;
+}
+.notice-reveal-enter-active,
+.notice-reveal-leave-active,
+.mission-title-enter-active,
+.mission-title-leave-active {
+  transition: opacity var(--motion-fast) ease, transform var(--motion-medium) var(--motion-ease);
+}
+.notice-reveal-enter-from,
+.notice-reveal-leave-to,
+.mission-title-enter-from {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+.mission-title-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.pipeline-mark-enter-active {
+  transition: transform var(--motion-medium) var(--motion-spring), opacity var(--motion-fast) ease;
+}
+.pipeline-mark-leave-active {
+  transition: opacity 80ms ease;
+}
+.pipeline-mark-enter-from {
+  opacity: 0;
+  transform: scale(.7);
+}
+.pipeline-mark-leave-to {
+  opacity: 0;
+}
+.call-mark-enter-active {
+  transition: transform var(--motion-medium) var(--motion-spring), opacity var(--motion-fast) ease;
+}
+.call-mark-leave-active {
+  transition: opacity 80ms ease;
+}
+.call-mark-enter-from {
+  opacity: 0;
+  transform: scale(.7);
+}
+.call-mark-leave-to {
+  opacity: 0;
+}
+.execution-list-enter-active,
+.event-list-enter-active,
+.execution-list-move,
+.event-list-move {
+  transition: transform var(--motion-medium) var(--motion-ease), opacity var(--motion-medium) ease;
+}
+.execution-list-enter-active,
+.event-list-enter-active {
+  animation: motion-record-flash 850ms ease-out;
+  transition-delay: calc(var(--arrival-index, 0) * 35ms);
+}
+.execution-list-enter-from,
+.event-list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.tool-call {
+  transition: border-color var(--motion-medium) ease, background-color var(--motion-medium) ease;
+}
+.tool-call summary:hover .detail-chevron {
+  color: #a1d4cf;
+}
+.detail-chevron {
+  display: inline-block;
+  transition: transform var(--motion-medium) var(--motion-ease), color var(--motion-fast) ease;
+}
+details[open] > summary .detail-chevron {
+  transform: rotate(180deg);
+}
+.activity-sidebar.is-executing .tool-call.running .tool-status {
+  animation: motion-breathe 2.2s ease-in-out infinite;
+}
+.artifact-card {
+  transition: border-color var(--motion-medium) ease, background-color var(--motion-medium) ease;
+}
+.artifact-card:hover {
+  border-color: #3b6370;
+  background-color: #102a3550;
+}
+@supports (interpolate-size: allow-keywords) {
+  .workbench details {
+    interpolate-size: allow-keywords;
+  }
+  .workbench details::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--motion-medium) var(--motion-ease),
+      content-visibility var(--motion-medium) allow-discrete;
+  }
+  .workbench details[open]::details-content {
+    block-size: auto;
+  }
+}
+
+.motion-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid #2b424f;
+  border-radius: 5px;
+  color: #8faab8;
+  background: #112630;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.motion-toggle:hover {
+  border-color: #4a7e89;
+  color: #b5dcd8;
+}
+.motion-toggle[aria-pressed="true"] {
+  color: #d0b88f;
+  border-color: #665b45;
+  background: #282d29;
+}
+
+@keyframes motion-header-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motion-shell-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motion-node-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motion-stage-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(460%); }
+}
+@keyframes motion-breathe {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+@keyframes motion-active-ring {
+  0% { opacity: 0; transform: scale(.93); }
+  18% { opacity: .55; }
+  100% { opacity: 0; transform: scale(1.17); }
+}
+@keyframes motion-evidence-trace {
+  to { stroke-dashoffset: -48; }
+}
+@keyframes motion-record-flash {
+  from { background-color: #23504780; }
+  to { background-color: transparent; }
+}
+
+/* Pause continuous effects in background tabs. Entrance animations can finish
+   so a page first loaded in the background never stays at opacity zero. */
+.workbench.page-inactive .live-orb,
+.workbench.page-inactive .pipeline-icon::after,
+.workbench.page-inactive .analyst-signal,
+.workbench.page-inactive .mission-progress-track::after,
+.workbench.page-inactive .tool-status,
+.workbench.page-inactive .vue-flow__edge-path,
+.workbench.page-inactive .constellation-ring {
+  animation-play-state: paused !important;
+}
+/* Quiet mode and system accessibility also disable vendor transitions. */
+.workbench.motion-still *,
+.workbench.motion-still *::before,
+.workbench.motion-still *::after,
+.workbench.motion-still details::details-content {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workbench *,
+  .workbench *::before,
+  .workbench *::after,
+  .workbench details::details-content {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,845 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:trust-analysis:competition-export:0.3-provisional",
+  "title": "单专题提交文件契约（官方字段与团队自定义附件分开）",
+  "$comment": "每个专题各有 evidence.json、conclusions.json、confidence.json、conflicts.json；不能把四数组混装或跨专题混装。按文件名选择对应 $defs/*ExportArray 校验。Evidence/Conclusion 是评分标准附录 A 的字段，Confidence/Conflict 是需随包附字段说明的团队自定义附件。topic_id/run_id/graph_revision 仅放外部 manifest/API，不能注入官方条目；doc_id/para_id/question_id 必须逐字保留源数据值。Schema 无法证明原始 ID、逐字 quote、跨文件引用、同源独立性、公式数值一致性、少数意见完整性或 DAG 正确性，均须服务端语义校验。内部 ID 不能代替原始 ID。 2026-10-19临时兼容口径：evidence按doc_id/para_id唯一并附fact_id；conclusion关系同时带doc_id/para_id/fact_id/quote/verdict_label，冲突带样例消解代码，待赛方确认收敛。",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/EvidenceExportArray"
+    },
+    {
+      "$ref": "#/$defs/ConclusionExportArray"
+    },
+    {
+      "$ref": "#/$defs/ConfidenceExportArray"
+    },
+    {
+      "$ref": "#/$defs/ConflictExportArray"
+    }
+  ],
+  "$defs": {
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "para_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "doc_id",
+        "para_id"
+      ],
+      "additionalProperties": false
+    },
+    "Argument": {
+      "type": "object",
+      "properties": {
+        "时间": {
+          "type": "string"
+        },
+        "主体": {
+          "type": "string"
+        },
+        "地点": {
+          "type": "string"
+        },
+        "内容": {
+          "type": "string"
+        },
+        "影响": {
+          "type": "string"
+        },
+        "数值口径": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "时间",
+        "主体",
+        "地点",
+        "内容",
+        "影响",
+        "数值口径"
+      ],
+      "additionalProperties": false
+    },
+    "ConfidenceEvidenceRef": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "para_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "doc_id",
+        "para_id",
+        "quote"
+      ],
+      "additionalProperties": false,
+      "description": "仅自定义置信度附件使用的精确证据引用；区分同一段落中的多个 quote，不能替代官方 SourceRef。"
+    },
+    "EvidenceExport": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "para_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "起始para_id所指原段或已按原文连续坐标验证的跨段引用；程序构造，保留原字和起始段ID。"
+        },
+        "fact_des": {
+          "type": "string",
+          "minLength": 1
+        },
+        "argument": {
+          "$ref": "#/$defs/Argument"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "fact_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "doc_id",
+        "para_id",
+        "quote",
+        "fact_des",
+        "argument",
+        "entities",
+        "fact_id"
+      ],
+      "additionalProperties": false
+    },
+    "ConclusionExport": {
+      "type": "object",
+      "properties": {
+        "question_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conclusion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supporting_facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConclusionSupportingFact"
+          },
+          "minItems": 0,
+          "uniqueItems": true,
+          "description": "支持证据引用。未决（undetermined）可为空；服务层根据内部decision强制确定性结论（asserted）至少引用一条支持证据，不得为满足导出结构编造支持。"
+        },
+        "conflicting_facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConclusionConflictingFact"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "question_id",
+        "question",
+        "conclusion",
+        "supporting_facts",
+        "conflicting_facts"
+      ],
+      "additionalProperties": false
+    },
+    "Parameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "basis"
+      ],
+      "additionalProperties": false
+    },
+    "Calculation": {
+      "type": "object",
+      "properties": {
+        "formula": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Parameter"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "substitution": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unrounded_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "rounded_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "decimal_places": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "formula",
+        "parameters",
+        "substitution",
+        "unrounded_score",
+        "rounded_score",
+        "decimal_places"
+      ],
+      "additionalProperties": false
+    },
+    "IndependentSourceGroup": {
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConfidenceEvidenceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "grade_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "grade_basis": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "group_id",
+        "evidence_refs",
+        "grade_score",
+        "grade_basis"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceConfidenceExport": {
+      "type": "object",
+      "properties": {
+        "object_type": {
+          "const": "evidence"
+        },
+        "object_ref": {
+          "type": "object",
+          "properties": {
+            "doc_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "para_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "quote": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "doc_id",
+            "para_id",
+            "quote"
+          ],
+          "additionalProperties": false
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "formula_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interpretation": {
+          "const": "quality_index"
+        },
+        "calculation": {
+          "$ref": "#/$defs/Calculation"
+        },
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "source_level": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_group_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "grade_score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "support_strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "support_strength_basis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "quote_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "source_level",
+            "source_group_id",
+            "grade_score",
+            "support_strength",
+            "support_strength_basis",
+            "quote_verified"
+          ],
+          "additionalProperties": false
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "gate": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "grade_score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "support_strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "gate",
+            "grade_score",
+            "support_strength"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "object_type",
+        "object_ref",
+        "score",
+        "formula_version",
+        "parameter_version",
+        "interpretation",
+        "calculation",
+        "inputs",
+        "components"
+      ],
+      "additionalProperties": false,
+      "description": "团队自定义：证据质量分，初始公式 gate*grade_score*support_strength；不是模型自报概率。"
+    },
+    "ConclusionConfidenceExport": {
+      "type": "object",
+      "properties": {
+        "object_type": {
+          "const": "conclusion"
+        },
+        "object_ref": {
+          "type": "object",
+          "properties": {
+            "question_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "question_id"
+          ],
+          "additionalProperties": false
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "formula_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interpretation": {
+          "const": "quality_index"
+        },
+        "calculation": {
+          "$ref": "#/$defs/Calculation"
+        },
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "support_groups": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/IndependentSourceGroup"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "unresolved_conflict_groups": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/IndependentSourceGroup"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "chain_node_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "verified_chain_node_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "all_dependencies_valid": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "support_groups",
+            "unresolved_conflict_groups",
+            "chain_node_ids",
+            "verified_chain_node_ids",
+            "all_dependencies_valid"
+          ],
+          "additionalProperties": false
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "gate": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "source_credibility": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "evidence_consistency": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "reasoning_completeness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "gate",
+            "source_credibility",
+            "evidence_consistency",
+            "reasoning_completeness"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "object_type",
+        "object_ref",
+        "score",
+        "formula_version",
+        "parameter_version",
+        "interpretation",
+        "calculation",
+        "inputs",
+        "components"
+      ],
+      "additionalProperties": false,
+      "description": "团队自定义：初始 C=gate*(0.40*S+0.35*E+0.25*R)，版本化参数由服务端复算；尚非校准概率。"
+    },
+    "ConfidenceExport": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/EvidenceConfidenceExport"
+        },
+        {
+          "$ref": "#/$defs/ConclusionConfidenceExport"
+        }
+      ]
+    },
+    "ConflictSide": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "string",
+          "minLength": 1
+        },
+        "agent_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "position",
+        "agent_role",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    },
+    "ConflictExport": {
+      "type": "object",
+      "properties": {
+        "conflict_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "本专题内唯一的冲突编号；保存内部冲突 ID 与本导出 ID 的映射，不改写原始问题或来源 ID。"
+        },
+        "question_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conflict_kind": {
+          "enum": [
+            "agent_vs_agent",
+            "source_vs_source"
+          ]
+        },
+        "side_a": {
+          "$ref": "#/$defs/ConflictSide"
+        },
+        "side_b": {
+          "$ref": "#/$defs/ConflictSide"
+        },
+        "result": {
+          "enum": [
+            "adopt_a",
+            "adopt_b",
+            "coexist",
+            "unresolved"
+          ]
+        },
+        "resolution_type": {
+          "enum": [
+            "majority_vote",
+            "source_priority",
+            "recency",
+            "semantic_credibility",
+            "scope_separation",
+            "insufficient_evidence",
+            "other"
+          ]
+        },
+        "applicability": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adopted_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "excluded_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minority_opinions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/SourceRef"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "retention_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reopen_condition": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "position",
+              "evidence_refs",
+              "retention_reason",
+              "reopen_condition"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "reopen_condition": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "conflict_id",
+        "question_id",
+        "conflict_kind",
+        "side_a",
+        "side_b",
+        "result",
+        "resolution_type",
+        "applicability",
+        "adopted_reason",
+        "excluded_reason",
+        "minority_opinions",
+        "reopen_condition"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "enum": [
+                  "adopt_a",
+                  "adopt_b"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "minority_opinions": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "description": "团队自定义冲突消解记录。采信一方时至少保留一条少数意见及其重新审议条件；并列/未决也须说明为何保留双方；没有被排除方时 excluded_reason 写明不适用及原因。全局 reopen_condition 为各项条件的摘要。"
+    },
+    "EvidenceExportArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EvidenceExport"
+      },
+      "minItems": 0
+    },
+    "ConclusionExportArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ConclusionExport"
+      },
+      "minItems": 0
+    },
+    "ConfidenceExportArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ConfidenceExport"
+      },
+      "minItems": 0
+    },
+    "ConflictExportArray": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ConflictExport"
+      },
+      "minItems": 0
+    },
+    "ConclusionSupportingFact": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "para_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_des": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verdict_label": {
+          "type": "string",
+          "enum": [
+            "full_support",
+            "partial_support"
+          ]
+        }
+      },
+      "required": [
+        "doc_id",
+        "para_id",
+        "fact_id",
+        "quote",
+        "verdict_label"
+      ],
+      "additionalProperties": false
+    },
+    "ConclusionConflictingFact": {
+      "type": "object",
+      "properties": {
+        "doc_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "para_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fact_des": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verdict_label": {
+          "type": "string",
+          "enum": [
+            "full_support",
+            "partial_support"
+          ]
+        },
+        "resolution_type": {
+          "type": "string",
+          "enum": [
+            "Majority_Vote",
+            "Source_Priority",
+            "Most_Recent",
+            "Credibility",
+            "Other"
+          ]
+        }
+      },
+      "required": [
+        "doc_id",
+        "para_id",
+        "fact_id",
+        "quote",
+        "verdict_label",
+        "resolution_type"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

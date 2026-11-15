@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:trust-analysis:agent-output:0.2",
+  "title": "两路独立研判的统一输出（内部契约）",
+  "$comment": "同一首轮 A/B 只读同一个已冻结 evidence_snapshot，不能看到对方输出、聊天或结果缓存。role 不同不等于已经独立。禁止 confidence/score 字段替代确定性质量计算。revision_id 对应 SQL graph_revisions.id；graph_revision 对应其 revision_no，同 topic 两者必须一一映射。Schema 只能校验结构，服务端须核验 topic/run/snapshot/revision 匹配、所有 UUID 引用存在且属同一快照、逐字 evidence spans、无跨题非法依赖、节点无环/无自环且先决节点有效、根结论引用的完整传递闭包及首轮隔离日志。judgments 是可审核的结构化判断与依据，不采集模型隐藏思维链。",
+  "type": "object",
+  "properties": {
+    "topic_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "SQL graph_revisions.id；同一 topic 内与 graph_revision 一一映射。"
+    },
+    "graph_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "SQL graph_revisions.revision_no；由服务端核验与 revision_id 匹配。"
+    },
+    "question_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "description": "内部问题 UUID；官方原 question_id 只在导出投影时恢复。"
+    },
+    "evidence_snapshot_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "role": {
+      "enum": [
+        "authority_analyst",
+        "cross_validation_analyst"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "asserted",
+        "undetermined"
+      ]
+    },
+    "conclusion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "主体": {
+          "$ref": "#/$defs/ScopeValue"
+        },
+        "时点": {
+          "$ref": "#/$defs/ScopeValue"
+        },
+        "范围": {
+          "$ref": "#/$defs/ScopeValue"
+        },
+        "指标": {
+          "$ref": "#/$defs/ScopeValue"
+        }
+      },
+      "required": [
+        "主体",
+        "时点",
+        "范围",
+        "指标"
+      ],
+      "additionalProperties": false
+    },
+    "atomic_claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/AtomicClaim"
+      },
+      "minItems": 0
+    },
+    "judgments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Judgment"
+      },
+      "minItems": 0
+    },
+    "final_judgment_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "supporting_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "conflicting_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "topic_id",
+    "run_id",
+    "revision_id",
+    "graph_revision",
+    "question_id",
+    "evidence_snapshot_id",
+    "role",
+    "decision",
+    "conclusion",
+    "scope",
+    "atomic_claims",
+    "judgments",
+    "final_judgment_ids",
+    "supporting_evidence_ids",
+    "conflicting_evidence_ids"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "asserted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "supporting_evidence_ids": {
+            "minItems": 1
+          },
+          "atomic_claims": {
+            "minItems": 1
+          },
+          "judgments": {
+            "minItems": 1
+          },
+          "final_judgment_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "ScopeValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "unknown"
+            },
+            "value": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "明确未知须写 unknown/null；不得从发布时间臆测统计截止时点。"
+    },
+    "Judgment": {
+      "type": "object",
+      "properties": {
+        "judgment_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "enum": [
+            "asserted",
+            "undetermined"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "prerequisite_judgment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "judgment_id",
+        "statement",
+        "decision",
+        "evidence_ids",
+        "prerequisite_judgment_ids"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "asserted"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "evidence_ids": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "prerequisite_judgment_ids": {
+                    "minItems": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "AtomicClaim": {
+      "type": "object",
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision": {
+          "enum": [
+            "asserted",
+            "undetermined"
+          ]
+        },
+        "supporting_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "conflicting_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "prerequisite_judgment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "claim_id",
+        "statement",
+        "decision",
+        "supporting_evidence_ids",
+        "conflicting_evidence_ids",
+        "prerequisite_judgment_ids"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "asserted"
+              }
+            }
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "supporting_evidence_ids": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "prerequisite_judgment_ids": {
+                    "minItems": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,4003 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "多智能体可信研判工作台 API 设计草案",
+    "version": "0.2.0",
+    "description": "设计契约，尚未实现服务。内部资源均使用UUID；official_*保留赛方原始ID，不擅自加前缀。服务默认本机可信协作环境，actor来自本地操作者配置，并不代表已认证用户。系统运行输入仅允许原始资料与问题字段，gold目录不可见。每专题单一活动写run；候选head与published ready分离；所有正式导出显式绑定ready revision。"
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000/api/v1",
+      "description": "建议本地开发地址"
+    }
+  ],
+  "security": [],
+  "tags": [
+    {
+      "name": "查询"
+    },
+    {
+      "name": "运行"
+    },
+    {
+      "name": "人工修订"
+    },
+    {
+      "name": "导出"
+    }
+  ],
+  "paths": {
+    "/topics": {
+      "get": {
+        "operationId": "listTopics",
+        "summary": "列出专题",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Topic"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topics/{topic_id}/questions": {
+      "get": {
+        "operationId": "listQuestions",
+        "summary": "列出专题问题",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "topic_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Question"
+                      }
+                    }
+                  },
+                  "required": [
+                    "topic_id",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topics/{topic_id}/runs": {
+      "post": {
+        "operationId": "createRun",
+        "summary": "启动研判写运行",
+        "tags": [
+          "运行"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunCreate"
+              }
+            }
+          }
+        },
+        "description": "原子检查每专题最多1个活动写run（queued/running/awaiting_review）。base须匹配head，新建target revision成为head，published仍指最近ready。待旧run确认进入终态后才能新建。"
+      }
+    },
+    "/runs/{run_id}": {
+      "get": {
+        "operationId": "getRun",
+        "summary": "查询运行状态",
+        "tags": [
+          "运行"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RunId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs/{run_id}/events": {
+      "get": {
+        "operationId": "streamRunEvents",
+        "summary": "订阅或续接运行事件",
+        "tags": [
+          "运行"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/LastEventId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE事件流，data结构为RunEvent。",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-cache"
+                }
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "id: 1\nevent: message\ndata: {\"run_id\":\"00000000-0000-4000-8000-000000000001\",\"revision_id\":\"00000000-0000-4000-8000-000000000002\",\"sequence\":1,\"occurred_at\":\"2026-10-17T00:00:00Z\",\"payload\":{\"type\":\"run.status\",\"status\":\"running\",\"cancel_requested\":false}}\n\n"
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "text/event-stream，每条包含 id: <sequence>、event: message、data: <RunEvent JSON>。sequence在run内严格递增，Last-Event-ID仅控制重放。终态事件发送后可关闭连接。连接或重连绝不创建或重启任务。HTTP注释可作keepalive，不计为事件。事件对象结构见components.schemas.RunEvent。"
+      }
+    },
+    "/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "requestCancelRun",
+        "summary": "请求取消运行",
+        "tags": [
+          "运行"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RunId"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "已终态，原样返回；不再启动任务",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          }
+        },
+        "description": "幂等设置cancel_requested=true，不立即声称cancelled。worker确认前仍占活动写run名额，commit返回409。worker发布CAS必须检查cancel_requested=false。对已终态run返回200原状态。"
+      }
+    },
+    "/topics/{topic_id}/revisions/{revision_id}/graph": {
+      "get": {
+        "operationId": "getGraph",
+        "summary": "查询明确版本的业务依赖图",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/RevisionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Graph"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "不提供隐式latest。building草稿可查询但不是正式结果；revision必须属于topic。"
+      }
+    },
+    "/evidence/{evidence_id}": {
+      "get": {
+        "operationId": "getEvidence",
+        "summary": "读取版本内的证据",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/EvidenceId"
+          },
+          {
+            "name": "revision_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Evidence"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/paragraphs/{paragraph_id}": {
+      "get": {
+        "operationId": "getParagraph",
+        "summary": "读取不可变原文段落",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ParagraphId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paragraph"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topics/{topic_id}/revisions/{revision_id}/artifacts": {
+      "get": {
+        "operationId": "getArtifacts",
+        "summary": "读取同版本研判产物",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/RevisionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Artifacts"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "包含 conclusions/conflicts/confidence/agent_outputs 四个内部结果数组。明确标注revision_state，草稿不得冒充正式结果。"
+      }
+    },
+    "/topics/{topic_id}/changes/preview": {
+      "post": {
+        "operationId": "previewChanges",
+        "summary": "预览人工变更和传播影响",
+        "tags": [
+          "人工修订"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePreviewRequest"
+              }
+            }
+          }
+        },
+        "description": "只读计算并保存预览，不改业务head；活动run期间仍可预览，基于当前head快照。base与head不一致409。原文不可覆盖；引用跨度、图无环、端点与同专题约束失败422。预览可能因head前进而无法提交。"
+      }
+    },
+    "/topics/{topic_id}/changes": {
+      "post": {
+        "operationId": "commitChanges",
+        "summary": "提交已预览人工变更",
+        "tags": [
+          "人工修订"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeCommitRequest"
+              }
+            }
+          }
+        },
+        "description": "原子校验预览归属、有效期、服务端内容hash、请求hash和base==当前head；同时检查无活动写run。busy/stale/expired/hash不符409；非法变更422。基于预览内容新建revision和run，先保存旧图影响闭包，再执行变更。不能提交未预览的新operations。"
+      }
+    },
+    "/runs/{run_id}/review": {
+      "post": {
+        "operationId": "reviewRun",
+        "summary": "复核锁定判断并恢复同一运行",
+        "tags": [
+          "人工修订"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RunId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Run"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunReviewRequest"
+              }
+            }
+          }
+        },
+        "description": "仅awaiting_review且cancel_requested=false的当前活动run接受。检查base==target==topic.head、expected_node_version；复核后保持run_id恢复计算，绝不另开run。前提改变时locked节点先needs_review，下游不得视其有效；keep_manual必须重新通过证据/前提校验。 一次decisions按请求批次原子保存，批次存幂等key及request hash，子项按node_id唯一；不能把同一个key逐节点作为唯一记录。keep_manual重新验证现有依据，rewrite_manual验证新依据和旧/新依赖闭包，release_override只恢复本次有效机器候选。任一操作改变判断或前提后，重建依赖并重新处理受影响下游A/B与仲裁，再计算质量，不能直接只重算分数。无有效候选时返回422或继续awaiting_review，不恢复旧版文本。"
+      }
+    },
+    "/topics/{topic_id}/revisions/{revision_id}/diff": {
+      "get": {
+        "operationId": "getRevisionDiff",
+        "summary": "比较两个明确版本",
+        "tags": [
+          "查询"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/RevisionId"
+          },
+          {
+            "name": "against",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDiff"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "两个版本必须同专题，不以LangGraph checkpoint充当revision。"
+      }
+    },
+    "/topics/{topic_id}/exports": {
+      "post": {
+        "operationId": "createExport",
+        "summary": "生成明确ready版本的比赛ZIP",
+        "tags": [
+          "导出"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TopicId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportCreate"
+              }
+            }
+          }
+        },
+        "description": "仅接受ready且无stale/needs_review/引用失效的明确revision。不隐式导出head；失败/取消草稿不可导出。按独立比赛schema验证四类必交JSON、原始官方ID、同版本引用和manifest；校验失败422。导出任务独立于写run，不变更业务head。 Idempotency-Key必填，同key同请求返回原导出任务；不同请求409。"
+      }
+    },
+    "/exports/{export_id}": {
+      "get": {
+        "operationId": "getExport",
+        "summary": "查询导出任务",
+        "tags": [
+          "导出"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "结构或语义校验失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exports/{export_id}/download": {
+      "get": {
+        "operationId": "downloadExport",
+        "summary": "下载已就绪ZIP",
+        "tags": [
+          "导出"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExportId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "比赛提交ZIP",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "attachment; filename=\"submission-<export_id>.zip\""
+              }
+            },
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在或不属于该专题／版本",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "专题忙、版本过期、状态不符、预览失效或幂等冲突",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务异常，未发布部分结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "description": "仅export.status=succeeded可下载，否则409 export_not_ready。ZIP固定绑定export.revision_id（该revision必须ready），后续head改变不改写此文件。"
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "TopicId": {
+        "name": "topic_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "RunId": {
+        "name": "run_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "RevisionId": {
+        "name": "revision_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "EvidenceId": {
+        "name": "evidence_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ParagraphId": {
+        "name": "paragraph_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "ExportId": {
+        "name": "export_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "description": "按资源族持久化：runs使用(topic_id,key)，包含initial/retry/change；exports使用独立(topic_id,key)；reviews批次使用(run_id,key)。不按actor或单个操作隔离。同scope同key同body返回原资源，同key不同body返回409 idempotency_conflict。"
+      },
+      "LastEventId": {
+        "name": "Last-Event-ID",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "description": "已收到的最后sequence，省略相当于0。断线重连不创建run；负值或超出当前序号为422，游标不再保留时409 invalid_cursor。"
+      }
+    },
+    "schemas": {
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "not_found",
+                  "topic_busy",
+                  "stale_revision",
+                  "preview_expired",
+                  "preview_hash_mismatch",
+                  "idempotency_conflict",
+                  "invalid_state",
+                  "invalid_cursor",
+                  "semantic_validation_failed",
+                  "export_not_ready",
+                  "internal_error"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "request_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "LocalActor": {
+        "type": "object",
+        "properties": {
+          "actor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "identity_source": {
+            "const": "local_configuration"
+          },
+          "authenticated": {
+            "const": false
+          }
+        },
+        "required": [
+          "actor_id",
+          "display_name",
+          "identity_source",
+          "authenticated"
+        ],
+        "additionalProperties": false,
+        "description": "本地操作者由服务配置提供，仅供审计，不声称经过身份认证。请求不接受客户端冒填 actor。"
+      },
+      "RevisionState": {
+        "type": "string",
+        "enum": [
+          "building",
+          "awaiting_review",
+          "ready",
+          "failed",
+          "cancelled",
+          "superseded"
+        ]
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "awaiting_review",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "superseded"
+        ]
+      },
+      "Revision": {
+        "type": "object",
+        "properties": {
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/RevisionState"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/LocalActor"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "graph_revision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "专题内递增业务图标号；与revision_id有唯一映射，不是LangGraph checkpoint。"
+          }
+        },
+        "required": [
+          "revision_id",
+          "topic_id",
+          "parent_revision_id",
+          "state",
+          "created_at",
+          "created_by",
+          "run_id",
+          "graph_revision"
+        ],
+        "additionalProperties": false,
+        "description": "业务图版本，与 LangGraph checkpoint 独立。head 指最新计算候选，published 指最近 ready 版本；失败或取消候选可作下次计算 base，但不可正式导出。"
+      },
+      "Topic": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "official_topic_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "head_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "question_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "topic_id",
+          "official_topic_id",
+          "title",
+          "head_revision_id",
+          "published_revision_id",
+          "active_run_id",
+          "document_count",
+          "question_count"
+        ],
+        "additionalProperties": false
+      },
+      "Question": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "official_question_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "question_id",
+          "topic_id",
+          "official_question_id",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "ModelUsage": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "call_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "input_tokens",
+          "output_tokens",
+          "call_count"
+        ],
+        "additionalProperties": false
+      },
+      "Run": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "include_baseline": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "cancel_requested": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "actor": {
+            "$ref": "#/components/schemas/LocalActor"
+          },
+          "last_event_sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "graph_checkpoint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelUsage"
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "initial",
+              "recompute",
+              "retry",
+              "quality-refine"
+            ]
+          },
+          "strict_scope_enabled": {
+            "type": "boolean",
+            "description": "True means new initial/refine jobs use the same all-candidate fact-view strict pipeline; historical runs retain their recorded configuration."
+          },
+          "derived_inputs": {
+            "type": "array",
+            "description": "Candidate artifact provenance for a NEW job, distinct from checkpoint continuation and incremental usage. Source usage remains historical.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question_id": {
+                  "type": "string"
+                },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "source_revision_id": {
+                  "type": "string"
+                },
+                "source_run_id": {
+                  "type": "string"
+                },
+                "candidate_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "historical_source_coverage": {
+                  "type": "object"
+                },
+                "historical_source_usage": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "required": [
+                "question_id",
+                "artifact_sha256",
+                "source_revision_id",
+                "source_run_id",
+                "candidate_count",
+                "historical_source_coverage",
+                "historical_source_usage"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "run_id",
+          "topic_id",
+          "base_revision_id",
+          "target_revision_id",
+          "question_ids",
+          "include_baseline",
+          "status",
+          "cancel_requested",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "actor",
+          "last_event_sequence",
+          "graph_checkpoint_id",
+          "error",
+          "usage",
+          "mode"
+        ],
+        "additionalProperties": false,
+        "description": "每专题至多一个 queued/running/awaiting_review 写 run。请求取消仅置 cancel_requested，worker 确认后才转 cancelled，之前仍 busy。发布 CAS 要求状态 running、cancel_requested=false 且 topic.head_revision_id 等于 target_revision_id；旧 worker 迟到不能发布。"
+      },
+      "RunCreate": {
+        "type": "object",
+        "properties": {
+          "question_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "include_baseline": {
+            "type": "boolean",
+            "default": false
+          },
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "initial",
+              "retry",
+              "quality-refine"
+            ],
+            "default": "initial",
+            "description": "quality-refine creates a NEW paid review job from a fixed ready candidate artifact; it never resumes another version's checkpoint."
+          },
+          "source_revision_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Required only for quality-refine; immutable ready revision containing complete candidate_evidence and source_coverage."
+          }
+        },
+        "required": [
+          "question_ids",
+          "include_baseline",
+          "base_revision_id"
+        ],
+        "additionalProperties": false,
+        "description": "base_revision_id 必须等于 topic.head_revision_id。仅无 head 的初次运行可传 null。question_ids 使用内部 UUID，不能带参考答案。",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "quality-refine"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "required": [
+                "source_revision_id"
+              ],
+              "properties": {
+                "source_revision_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "source_revision_id": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Argument": {
+        "type": "object",
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          },
+          "numeric_scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "subject",
+          "location",
+          "content",
+          "impact",
+          "numeric_scope"
+        ],
+        "additionalProperties": false
+      },
+      "Interpretation": {
+        "type": "object",
+        "properties": {
+          "fact_description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "stance": {
+            "type": "string",
+            "enum": [
+              "support",
+              "oppose",
+              "neutral",
+              "unclassified"
+            ]
+          },
+          "argument": {
+            "$ref": "#/components/schemas/Argument"
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "fact_description",
+          "stance",
+          "argument",
+          "entities"
+        ],
+        "additionalProperties": false,
+        "description": "可修改的事实解释与立场，不是原文。中文赛方 argument 字段仅在导出映射，不改官方值的含义。"
+      },
+      "QuoteSpanInput": {
+        "type": "object",
+        "properties": {
+          "paragraph_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "paragraph_id",
+          "start",
+          "end"
+        ],
+        "additionalProperties": false,
+        "description": "相对于原段落的 Unicode codepoint 半开区间 [start,end)，end>start。客户端不提交 quote，服务按原文切片。跨段引用用多个 span。"
+      },
+      "QuoteSpan": {
+        "type": "object",
+        "properties": {
+          "paragraph_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "paragraph_id",
+          "start",
+          "end",
+          "quote"
+        ],
+        "additionalProperties": false,
+        "description": "quote 必须逐字等于原始段落 codepoint 切片。"
+      },
+      "Paragraph": {
+        "type": "object",
+        "properties": {
+          "paragraph_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "document_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "official_doc_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "official_para_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "offset_unit": {
+            "const": "unicode_codepoint"
+          }
+        },
+        "required": [
+          "paragraph_id",
+          "document_id",
+          "topic_id",
+          "official_doc_id",
+          "official_para_id",
+          "text",
+          "sha256",
+          "offset_unit"
+        ],
+        "additionalProperties": false,
+        "description": "只读原文，API 不提供覆盖接口。内部 UUID 与官方 ID 分开。浏览器高亮须把 codepoint 转成 UTF-16 索引。"
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source_spans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteSpan"
+            },
+            "minItems": 1,
+            "maxItems": 1,
+            "description": "首版每条证据仅支持一个段落内的一个span，与evidence表一致。跨段材料须拆成多条证据并分别定位，不能拼接quote冒充单段引用。"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/Interpretation"
+          },
+          "included": {
+            "type": "boolean"
+          },
+          "source_group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_grade": {
+            "type": "string",
+            "enum": [
+              "official_record",
+              "official_statement",
+              "authoritative_media",
+              "mainstream_media",
+              "anonymous_source",
+              "social_restatement",
+              "unknown"
+            ]
+          },
+          "validation_status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid",
+              "needs_review"
+            ]
+          },
+          "validation_messages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "evidence_id",
+          "topic_id",
+          "revision_id",
+          "source_spans",
+          "interpretation",
+          "included",
+          "source_group_id",
+          "source_grade",
+          "validation_status",
+          "validation_messages"
+        ],
+        "additionalProperties": false
+      },
+      "NodeStatus": {
+        "type": "string",
+        "enum": [
+          "valid",
+          "invalid",
+          "stale",
+          "needs_review"
+        ]
+      },
+      "GraphNode": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "judgment",
+              "conclusion"
+            ]
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "machine_candidate_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/NodeStatus"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "needs_review": {
+            "type": "boolean"
+          },
+          "node_version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "对应SQL node_states.node_version，草稿内每次状态、依据或人工内容变更递增；review的expected_node_version需精确匹配。"
+          }
+        },
+        "required": [
+          "node_id",
+          "topic_id",
+          "revision_id",
+          "question_id",
+          "kind",
+          "evidence_id",
+          "content",
+          "machine_candidate_content",
+          "status",
+          "locked",
+          "needs_review",
+          "node_version"
+        ],
+        "additionalProperties": false,
+        "description": "evidence 类型必须带 evidence_id；judgment/conclusion 必须带 question_id。locked 只保护人工文本；前提改变后 needs_review=true，该节点不能再作为有效前提，机器候选另存。 是否采用由证据included及SQL adopted表达；计算中/失败由run状态表达，不扩充node status。"
+      },
+      "GraphEdge": {
+        "type": "object",
+        "properties": {
+          "edge_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from_node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "to_node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "supports",
+              "contradicts",
+              "prerequisite"
+            ]
+          }
+        },
+        "required": [
+          "edge_id",
+          "revision_id",
+          "from_node_id",
+          "to_node_id",
+          "relation"
+        ],
+        "additionalProperties": false,
+        "description": "业务依赖边必须无环且端点同专题同版本。执行先后、共同引用证据不能自动变成 prerequisite。"
+      },
+      "Graph": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "$ref": "#/components/schemas/Revision"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            }
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "nodes",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
+      "Conclusion": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "official_question_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "conclusion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "determination": {
+            "type": "string",
+            "enum": [
+              "determined",
+              "undetermined",
+              "needs_review"
+            ]
+          },
+          "supporting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "conflicting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "premise_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "node_id",
+          "topic_id",
+          "revision_id",
+          "question_id",
+          "official_question_id",
+          "conclusion",
+          "determination",
+          "supporting_evidence_ids",
+          "conflicting_evidence_ids",
+          "premise_node_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ConflictSide": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "agent_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "authority_analyst",
+                  "cross_validation_analyst",
+                  "arbitrate",
+                  "baseline"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "position",
+          "evidence_ids",
+          "agent_role"
+        ],
+        "additionalProperties": false
+      },
+      "Conflict": {
+        "type": "object",
+        "properties": {
+          "conflict_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conflict_type": {
+            "type": "string",
+            "enum": [
+              "numeric",
+              "fact",
+              "time",
+              "opinion"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "multi_source",
+              "multi_agent"
+            ]
+          },
+          "side_a": {
+            "$ref": "#/components/schemas/ConflictSide"
+          },
+          "side_b": {
+            "$ref": "#/components/schemas/ConflictSide"
+          },
+          "resolution_type": {
+            "type": "string",
+            "enum": [
+              "majority_vote",
+              "source_priority",
+              "recency",
+              "semantic_credibility",
+              "different_scope",
+              "undetermined"
+            ]
+          },
+          "result": {
+            "type": "string",
+            "minLength": 1
+          },
+          "adoption_reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exclusion_reason": {
+            "type": "string"
+          },
+          "minority_position": {
+            "type": "string"
+          },
+          "reopen_condition": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conflict_id",
+          "topic_id",
+          "revision_id",
+          "question_id",
+          "conflict_type",
+          "origin",
+          "side_a",
+          "side_b",
+          "resolution_type",
+          "result",
+          "adoption_reason",
+          "exclusion_reason",
+          "minority_position",
+          "reopen_condition"
+        ],
+        "additionalProperties": false
+      },
+      "ConfidenceDimensions": {
+        "type": "object",
+        "properties": {
+          "source_credibility": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "evidence_consistency": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reasoning_completeness": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "source_credibility",
+          "evidence_consistency",
+          "reasoning_completeness"
+        ],
+        "additionalProperties": false
+      },
+      "ConfidenceInputs": {
+        "type": "object",
+        "properties": {
+          "support_source_group_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "unresolved_conflict_group_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "verified_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "total_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "source_grade_scores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_group_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "grade_score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "source_group_id",
+                "grade_score"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "gate": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        },
+        "required": [
+          "support_source_group_ids",
+          "unresolved_conflict_group_ids",
+          "verified_node_ids",
+          "total_node_ids",
+          "source_grade_scores",
+          "gate"
+        ],
+        "additionalProperties": false
+      },
+      "AgentOutput": {
+        "type": "object",
+        "properties": {
+          "agent_output_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "retrieve",
+              "verify",
+              "authority_analyst",
+              "cross_validation_analyst",
+              "arbitrate",
+              "baseline"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "cancelled",
+              "running"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "judgment_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "conclusion_node_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_snapshot_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "graph_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evidence_snapshot_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "agent_output_id",
+          "run_id",
+          "topic_id",
+          "revision_id",
+          "question_id",
+          "role",
+          "status",
+          "summary",
+          "evidence_ids",
+          "judgment_node_ids",
+          "conclusion_node_id",
+          "input_snapshot_sha256",
+          "model",
+          "prompt_version",
+          "graph_revision",
+          "evidence_snapshot_id"
+        ],
+        "additionalProperties": false,
+        "description": "A/B 首轮互不可见，使用相同证据池版本；受影响 A/B 先重跑，再仲裁。此为内部查询对象，不强依赖赛方导出类型。 role 采用 authority_analyst/cross_validation_analyst，与独立输出契约一致；对应LangGraph节点名analyst_a/analyst_b。graph_revision与revision_id唯一映射，evidence_snapshot_id标识冻结证据池。此对象是查询摘要，完整独立研判payload另按agent-output.schema.json校验。"
+      },
+      "Artifacts": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_state": {
+            "$ref": "#/components/schemas/RevisionState"
+          },
+          "conclusions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Conclusion"
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Conflict"
+            }
+          },
+          "confidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Confidence"
+            }
+          },
+          "agent_outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentOutput"
+            }
+          }
+        },
+        "required": [
+          "topic_id",
+          "revision_id",
+          "revision_state",
+          "conclusions",
+          "conflicts",
+          "confidence",
+          "agent_outputs"
+        ],
+        "additionalProperties": false,
+        "description": "四个数组全部来自同一明确 revision，不混合 latest。内部 JSON 与正式比赛导出 JSON 分离。"
+      },
+      "SetInterpretation": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "set_interpretation"
+          },
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/Interpretation"
+          }
+        },
+        "required": [
+          "op",
+          "evidence_id",
+          "interpretation"
+        ],
+        "additionalProperties": false
+      },
+      "ExcludeEvidence": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "exclude_evidence"
+          },
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "op",
+          "evidence_id"
+        ],
+        "additionalProperties": false
+      },
+      "IncludeEvidence": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "include_evidence"
+          },
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "op",
+          "evidence_id"
+        ],
+        "additionalProperties": false
+      },
+      "AddEvidence": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "add_evidence"
+          },
+          "source_spans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteSpanInput"
+            },
+            "minItems": 1,
+            "maxItems": 1,
+            "description": "首版每条证据仅支持一个段落内的一个span，与evidence表一致。跨段材料须拆成多条证据并分别定位，不能拼接quote冒充单段引用。"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/Interpretation"
+          }
+        },
+        "required": [
+          "op",
+          "source_spans",
+          "interpretation"
+        ],
+        "additionalProperties": false
+      },
+      "OverrideJudgment": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "override_judgment"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "supporting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "conflicting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "premise_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "op",
+          "node_id",
+          "content",
+          "supporting_evidence_ids",
+          "conflicting_evidence_ids",
+          "premise_node_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseOverride": {
+        "type": "object",
+        "properties": {
+          "op": {
+            "const": "release_override"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "op",
+          "node_id"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeOperation": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SetInterpretation"
+          },
+          {
+            "$ref": "#/components/schemas/ExcludeEvidence"
+          },
+          {
+            "$ref": "#/components/schemas/IncludeEvidence"
+          },
+          {
+            "$ref": "#/components/schemas/AddEvidence"
+          },
+          {
+            "$ref": "#/components/schemas/OverrideJudgment"
+          },
+          {
+            "$ref": "#/components/schemas/ReleaseOverride"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "op",
+          "mapping": {
+            "set_interpretation": "#/components/schemas/SetInterpretation",
+            "exclude_evidence": "#/components/schemas/ExcludeEvidence",
+            "include_evidence": "#/components/schemas/IncludeEvidence",
+            "add_evidence": "#/components/schemas/AddEvidence",
+            "override_judgment": "#/components/schemas/OverrideJudgment",
+            "release_override": "#/components/schemas/ReleaseOverride"
+          }
+        },
+        "description": "唯一允许的变更类型；不接受 set_quote、update_paragraph 或任意 JSON Patch。新证据由原文 span 得到，原文不变。"
+      },
+      "ChangePreviewRequest": {
+        "type": "object",
+        "properties": {
+          "base_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangeOperation"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "base_revision_id",
+          "operations",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "RerunRequirement": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "retrieve",
+                "verify",
+                "authority_analyst",
+                "cross_validation_analyst",
+                "arbitrate"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "question_id",
+          "roles",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "PreviewWarning": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "related_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "related_node_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ChangePreview": {
+        "type": "object",
+        "properties": {
+          "preview_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "base_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangeOperation"
+            },
+            "minItems": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "affected_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "affected_question_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "locked_nodes_requiring_review": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "must_rerun_agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RerunRequirement"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewWarning"
+            }
+          }
+        },
+        "required": [
+          "preview_id",
+          "topic_id",
+          "base_revision_id",
+          "operations",
+          "reason",
+          "content_hash",
+          "expires_at",
+          "affected_node_ids",
+          "affected_question_ids",
+          "locked_nodes_requiring_review",
+          "must_rerun_agents",
+          "warnings"
+        ],
+        "additionalProperties": false,
+        "description": "预览持久化。hash 由服务对 topic/base/operations/reason 的规范化JSON计算；必须在有效期内，commit 不接受替换 operations。删除用旧图求闭包，新增按问题检索范围保守失效。"
+      },
+      "ChangeCommitRequest": {
+        "type": "object",
+        "properties": {
+          "preview_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "base_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "preview_content_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "preview_id",
+          "base_revision_id",
+          "preview_content_hash"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewKeep": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "const": "keep_manual"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_node_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "action",
+          "node_id",
+          "expected_node_version",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRewrite": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "const": "rewrite_manual"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_node_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "supporting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "conflicting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "premise_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "action",
+          "node_id",
+          "expected_node_version",
+          "reason",
+          "content",
+          "supporting_evidence_ids",
+          "conflicting_evidence_ids",
+          "premise_node_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRelease": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "const": "release_override"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expected_node_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "action",
+          "node_id",
+          "expected_node_version",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewDecision": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ReviewKeep"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewRewrite"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewRelease"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "action",
+          "mapping": {
+            "keep_manual": "#/components/schemas/ReviewKeep",
+            "rewrite_manual": "#/components/schemas/ReviewRewrite",
+            "release_override": "#/components/schemas/ReviewRelease"
+          }
+        }
+      },
+      "RunReviewRequest": {
+        "type": "object",
+        "properties": {
+          "base_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "base_revision_id",
+          "decisions"
+        ],
+        "additionalProperties": false,
+        "description": "base_revision_id 必须等于该 run.target_revision_id 和 topic.head_revision_id。仅 awaiting_review run 接受；确认沿用、改写、撤销 override 后在同一 run 恢复。重复 node_id 或证据不匹配返回422。复核批次内容hash持久化，expected_node_version对照node_states.node_version。任一版本过期整批409。缺失/不合格依据不能被keep_manual豁免。"
+      },
+      "NodeDiff": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "change_type": {
+            "type": "string",
+            "enum": [
+              "added",
+              "removed",
+              "updated",
+              "unchanged"
+            ]
+          },
+          "before_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NodeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NodeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "node_id",
+          "change_type",
+          "before_content",
+          "after_content",
+          "before_status",
+          "after_status",
+          "before_confidence",
+          "after_confidence",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "RevisionDiff": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "against_revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeDiff"
+            }
+          },
+          "added_edge_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "removed_edge_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "topic_id",
+          "revision_id",
+          "against_revision_id",
+          "nodes",
+          "added_edge_ids",
+          "removed_edge_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ExportCreate": {
+        "type": "object",
+        "properties": {
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "revision_id"
+        ],
+        "additionalProperties": false,
+        "description": "必须显式指定 ready 版本，不隐式读取 head；允许选择历史 ready 版本。"
+      },
+      "ExportFile": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "evidence",
+              "conclusions",
+              "confidence",
+              "conflicts",
+              "causal",
+              "manifest"
+            ]
+          },
+          "relative_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "relative_path",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "Export": {
+        "type": "object",
+        "properties": {
+          "export_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportFile"
+            }
+          },
+          "download_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "export_id",
+          "topic_id",
+          "revision_id",
+          "status",
+          "created_at",
+          "completed_at",
+          "files",
+          "download_url",
+          "error"
+        ],
+        "additionalProperties": false,
+        "description": "正式ZIP包含 evidence/conclusions/confidence/conflicts 四类必交JSON及manifest，因果可选；succeeded前经过独立比赛导出schema校验。原始官方ID不加内部前缀，引用均来自同一ready版本。"
+      },
+      "RunStatusEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "run.status"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "cancel_requested": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "status",
+          "cancel_requested"
+        ],
+        "additionalProperties": false
+      },
+      "NodeStatusEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "node.status"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_status": {
+            "$ref": "#/components/schemas/NodeStatus"
+          }
+        },
+        "required": [
+          "type",
+          "node_id",
+          "node_status"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRequiredEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "review.required"
+          },
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "type",
+          "node_ids",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ProgressEvent": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "progress"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "ingest",
+              "search",
+              "verify",
+              "reasoners",
+              "arbitrate",
+              "confidence",
+              "graph",
+              "export_validation"
+            ]
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "type",
+          "stage",
+          "question_id",
+          "completed",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "RunEvent": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RunStatusEvent"
+              },
+              {
+                "$ref": "#/components/schemas/NodeStatusEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ReviewRequiredEvent"
+              },
+              {
+                "$ref": "#/components/schemas/ProgressEvent"
+              }
+            ],
+            "discriminator": {
+              "propertyName": "type"
+            }
+          }
+        },
+        "required": [
+          "run_id",
+          "revision_id",
+          "sequence",
+          "occurred_at",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "description": "SSE id 是 sequence 十进制文本，run内严格递增，事件持久化后发送。客户端按run_id+sequence去重；重连只重放更大sequence，不重新运行。"
+      },
+      "EvidenceConfidenceInputs": {
+        "type": "object",
+        "properties": {
+          "quote_gate": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          },
+          "grade_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "support_strength": {
+            "type": "number",
+            "enum": [
+              0,
+              0.5,
+              1
+            ]
+          },
+          "target_statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "support_strength_reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "quote_gate",
+          "grade_score",
+          "support_strength",
+          "target_statement",
+          "support_strength_reason"
+        ],
+        "additionalProperties": false
+      },
+      "EvidenceConfidence": {
+        "type": "object",
+        "properties": {
+          "confidence_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evidence_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "formula_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "formula": {
+            "type": "string",
+            "minLength": 1
+          },
+          "calculation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parameter_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unrounded_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "level": {
+            "const": "evidence"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/EvidenceConfidenceInputs"
+          }
+        },
+        "required": [
+          "confidence_id",
+          "topic_id",
+          "revision_id",
+          "node_id",
+          "evidence_id",
+          "question_id",
+          "score",
+          "tier",
+          "formula_version",
+          "formula",
+          "calculation",
+          "parameter_version",
+          "unrounded_score",
+          "level",
+          "inputs"
+        ],
+        "additionalProperties": false,
+        "description": "证据公式为quote_gate * grade_score * support_strength；目标为该证据主要事实描述。支持强度与具体断言的关系另存业务边，不能永久贴在段落上。"
+      },
+      "ConclusionConfidence": {
+        "type": "object",
+        "properties": {
+          "confidence_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "evidence_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "formula_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "formula": {
+            "type": "string",
+            "minLength": 1
+          },
+          "calculation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parameter_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unrounded_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "level": {
+            "const": "conclusion"
+          },
+          "dimensions": {
+            "$ref": "#/components/schemas/ConfidenceDimensions"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/ConfidenceInputs"
+          }
+        },
+        "required": [
+          "confidence_id",
+          "topic_id",
+          "revision_id",
+          "node_id",
+          "evidence_id",
+          "question_id",
+          "score",
+          "tier",
+          "formula_version",
+          "formula",
+          "calculation",
+          "parameter_version",
+          "unrounded_score",
+          "level",
+          "dimensions",
+          "inputs"
+        ],
+        "additionalProperties": false
+      },
+      "Confidence": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/EvidenceConfidence"
+          },
+          {
+            "$ref": "#/components/schemas/ConclusionConfidence"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "level",
+          "mapping": {
+            "evidence": "#/components/schemas/EvidenceConfidence",
+            "conclusion": "#/components/schemas/ConclusionConfidence"
+          }
+        },
+        "description": "证据与结论分别保存可复算输入；quality index不是正确概率。formula/parameter版本和未舍入值全部持久化。"
+      }
+    }
+  }
+}

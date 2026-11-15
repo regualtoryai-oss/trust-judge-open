@@ -1,0 +1,83 @@
+{
+  "title": "【合成演练】青岚站失联人数滚动通报",
+  "documents": [
+    {
+      "doc_id": "doc_001",
+      "title": "青岚站早间初报",
+      "content": "【合成演练】2026年10月18日08:00，青岚站登记失联3人，统计范围为站内登记人员。\n\n登记表仍在逐人核对；本段不是全区伤亡统计。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 45,
+          "text": "【合成演练】2026年10月18日08:00，青岚站登记失联3人，统计范围为站内登记人员。"
+        },
+        {
+          "para_id": "para_002",
+          "char_start": 47,
+          "char_end": 68,
+          "text": "登记表仍在逐人核对；本段不是全区伤亡统计。"
+        }
+      ],
+      "publish_time": "2026-10-18T08:00:00+08:00",
+      "content_url": "https://example.invalid/qinglan/first"
+    },
+    {
+      "doc_id": "doc_002",
+      "title": "青岚站更正通报",
+      "content": "【合成演练】2026年10月18日12:00更正：青岚站登记失联4人，前条3人为初报。统计范围仍为站内登记人员。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 56,
+          "text": "【合成演练】2026年10月18日12:00更正：青岚站登记失联4人，前条3人为初报。统计范围仍为站内登记人员。"
+        }
+      ],
+      "publish_time": "2026-10-18T12:00:00+08:00",
+      "content_url": "https://example.invalid/qinglan/correction"
+    },
+    {
+      "doc_id": "doc_003",
+      "title": "云港区口径说明",
+      "content": "【合成演练】截至2026年10月18日12:30，云港区登记失联9人，统计范围为全区，含青岚站登记人员；全区人数不能替代单站人数。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 65,
+          "text": "【合成演练】截至2026年10月18日12:30，云港区登记失联9人，统计范围为全区，含青岚站登记人员；全区人数不能替代单站人数。"
+        }
+      ],
+      "publish_time": "2026-10-18T12:30:00+08:00",
+      "content_url": "https://example.invalid/yungang/district"
+    },
+    {
+      "doc_id": "doc_004",
+      "title": "更正通报的镜像转载",
+      "content": "【合成演练】2026年10月18日12:00更正：青岚站登记失联4人，前条3人为初报。统计范围仍为站内登记人员。",
+      "paragraphs": [
+        {
+          "para_id": "para_001",
+          "char_start": 0,
+          "char_end": 56,
+          "text": "【合成演练】2026年10月18日12:00更正：青岚站登记失联4人，前条3人为初报。统计范围仍为站内登记人员。"
+        }
+      ],
+      "publish_time": "2026-10-18T12:05:00+08:00",
+      "content_url": "https://example.invalid/qinglan/correction"
+    }
+  ],
+  "questions": [
+    {
+      "question_id": "q_001",
+      "question": "依据青岚站最近一份明确更正，截至更正时站内登记失联人数是多少？初报应如何保留？",
+      "conclusion": "SYNTHETIC_ANSWER_MUST_NEVER_ENTER_RUNTIME",
+      "supporting_facts": []
+    },
+    {
+      "question_id": "q_002",
+      "question": "云港区全区登记人数与青岚站登记人数不同，是否必然互相矛盾？应怎样区分统计范围？"
+    }
+  ]
+}
