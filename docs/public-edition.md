@@ -42,6 +42,12 @@ counter. Those cases verify budget plumbing and accounting states, not real
 tokenization, provider capacity or billing. Production tokenizer guards are
 unchanged and fail closed when the required asset is unavailable.
 
+The partial-tail sealed-recovery HTTP fixture injects the same real public
+`cl100k_base` encoder into both planning and full-wire counting. Its default
+cases still verify exact cached inputs, one new arbitration call, missing-cache
+zero-HTTP behavior, whole-episode accounting and export integrity. This encoder
+is not claimed to reproduce DeepSeek-native token counts or real provider costs.
+
 The archived-code replay test for a fixed private historical Git commit skips
 when that commit is absent. The clean public repository deliberately contains
 no original private Git objects; current-source replay regressions still run.

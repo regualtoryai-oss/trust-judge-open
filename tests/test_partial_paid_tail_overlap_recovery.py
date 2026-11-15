@@ -2,6 +2,8 @@
 
 Only in-process HTTPMock responses are used. The 120/360/480 counters test
 accounting and are not real-provider costs or evidence-quality measurements.
+Forecast/HTTP-boundary estimates use the same real public cl100k encoder over
+complete serialized JSON; this does not validate DeepSeek-native tokenization.
 """
 from hashlib import sha256
 import json
@@ -10,6 +12,7 @@ from zipfile import ZipFile
 
 import httpx
 import pytest
+import tiktoken
 
 from app.agents import strict_transport
 from app.agents import paid_response_cache
@@ -31,11 +34,18 @@ from test_paragraph_quality_workbench import patch_quality_http, settings_for
 
 def _native_http(monkeypatch, provider, *, overlap=False, only_arbitration=False):
     """Use the shared audited native mock, with an explicit no-fallback fence."""
-    native_count_wire = strict_transport.count_wire
     observed = patch_quality_http(monkeypatch, provider)
-    # The new paid-arbitration forecast must agree with the real pinned local
-    # tokenizer at the actual HTTP guard. Provider usage remains synthetic120.
-    monkeypatch.setattr(strict_transport, "count_wire", native_count_wire)
+    # Keep a nonconstant, full-wire count on both sides of the budget check.
+    # The encoder is a public test dependency, not a provider billing oracle.
+    from synthetic_planning import patch_planning
+    encoding = tiktoken.get_encoding("cl100k_base")
+    def counter(texts):
+        return [len(encoding.encode(text, disallowed_special=())) for text in texts]
+    patch_planning(monkeypatch, counter=counter)
+    def count_full_wire(body, directory, ordinal):
+        source = strict_transport.freeze(directory / f"request-{ordinal:02d}-wire.json", body)
+        return counter([Path(source["file"]).read_text(encoding="utf-8")])[0], source
+    monkeypatch.setattr(strict_transport, "count_wire", count_full_wire)
     underlying = strict_transport.httpx.AsyncHTTPTransport()
 
     async def handle(request):
